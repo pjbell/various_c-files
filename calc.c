@@ -45,7 +45,7 @@
 	/*			declare storage			*/
 
 	char copyright[]  ="           calc        ";    /*  name and    */
-	char copyright1[] ="  Copyright, 1988-2012 ";    /*  copyright   */
+	char copyright1[] ="  Copyright, 1988-2019 ";    /*  copyright   */
 	char copyright2[] ="        Paul J. Bell";       /*     for      */
 	char copyright3[] ="     All Rights Reserved";   /* binary code  */
 
