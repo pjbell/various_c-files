@@ -7,7 +7,7 @@
 /*			    december, 1988			*/
 /*								*/
 /*					 			*/
-/*			 Copyright, 1988-2012		*/
+/*			 Copyright, 1988-2019                   */
 /*			   Paul J. Bell				*/
 /*			All Rights Reserved			*/
 /*								*/
