@@ -1,0 +1,16 @@
+CC=gcc
+CPPFLAGS=
+CFLAGS = -lcrypt
+LD=ld
+LDFLAGS=-lm
+LDLIBS=
+
+all:	crypt makekey
+COMPILE.c=$(CC) $(CFLAGS) $(CPPFLAGS) -c .c:
+
+install:	crypt makekey
+	cp crypt makekey /usr/brlcad/bin/.
+	cp makekey.8 /usr/brlcad/man/man1/.
+	ln -s crypt /usr/brlcad/bin/crypt
+
+
