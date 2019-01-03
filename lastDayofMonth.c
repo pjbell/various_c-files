@@ -1,6 +1,6 @@
 /*	ldom: lastDayofMonth. based on an input argument, determine if today is the last day of the current month.
     if yes, exit with return code '0', otherwise exit with return code'1'.
-	use within crontab to execute a script/program on the day of a month.
+	use within crontab to execute a script/program on the last day of a month.
 	0 0 * * 0 ldom && command will execute "command" on the last day of the every month.
 												pjbell - 10June2014
 */
