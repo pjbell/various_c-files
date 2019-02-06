@@ -1,0 +1,157 @@
+#!/bin/sh
+#
+#       rsync the file systems defined by the list "backup_vols-working-list" to a volume
+#       defined by "/export/${TargetEnv}/composit_backups_${SourceEnv}".  note that the backup target file system in located
+#       on a different devicer. source and target volumes are located on ${SourceZFS) and ${TargetZFS}, respectively.
+#                       pjb - 31Jan19
+#
+
+backup()
+{
+if [ "${SourceEnv}" = 'stg1' -o "${SourceEnv}" = 'stg2' ];then
+        echo "shares select stage ls" > foo
+else
+        echo "shares select ${SourceEnv} ls" > foo
+fi
+
+ssh root@192.168.8.${SourceZFS} <foo >foo-vols-${SourceEnv}  2>&1
+
+grep ^${SourceEnv} foo-vols-${SourceEnv} >backup_vols-${SourceEnv}
+grep ^fec foo-vols-${SourceEnv} >>backup_vols-${SourceEnv}
+grep ^stg foo-vols-${SourceEnv} >>backup_vols-${SourceEnv}
+
+
+#cat backup_vols-${SourceEnv} | awk '{print $NF}' | grep -v "MOUNTPOINT" | head -2 > "backup_vols-working-list"
+cat backup_vols-${SourceEnv} | awk '{print $NF}' | grep -v "MOUNTPOINT" > "backup_vols-working-list"
+
+if [ "${REMEMBER}" = 'pool2' ];then
+        mount 192.168.8.${TargetZFS}:/export/${TargetEnv}-Composite_Backups_pool2 /BackupOut
+        if [ $? -ne 0 ];then
+                echo "Bummer! unable to mount Output volume - /export/${TargetEnv}-Composite_Backups_pool2."
+                echo "End - unable to mount Output volume - /export/${TargetEnv}-Composite_Backups_pool2."  >>${LOGS}
+                cleanup
+                exit
+        fi
+else
+        mount 192.168.8.${TargetZFS}:/export/${TargetEnv}-Composite_Backups_${SourceEnv} /BackupOut
+        if [ $? -ne 0 ];then
+                echo "Bummer! unable to mount Output volume - /export/${TargetEnv}-Composite_Backups_${SourceEnv}."
+                echo "End - unable to mount Output volume - /export/${TargetEnv}-Composite_Backups_${SourceEnv}." >>${LOGS}
+                cleanup
+                exit
+        fi
+fi
+
+
+for SHARE in `cat backup_vols-working-list | sed 's/^\/\(.*\)/\1/'`
+do
+echo /${SHARE}
+
+        mount -o ro 192.168.8.${SourceZFS}:/${SHARE} /BackupIn
+        if [ $? -ne 0 ];then
+                echo "Bummer! unable to mount Input volume - 192.168.8.${SourceZFS}:/${SHARE}."
+                echo "End - unable to mount Input volume - 192.168.8.${SourceZFS}:/${SHARE}." >>${LOGS}
+                cleanup
+                exit
+        fi
+
+
+
+        mkdir -p /BackupOUT/${SHARE}
+
+        if [ "${REMEMBER}" = 'pool2' ];then
+                echo "Syncing 192.168.8.${SourceZFS}:/${SHARE} to 192.168.8.${TargetZFS}:/export/${TargetEnv}-Composite_Backups_pool2/${SHARE}/" >>${LOGS}
+        else
+                echo "Syncing 192.168.8.${SourceZFS}:/${SHARE} to 192.168.8.${TargetZFS}:/export/${TargetEnv}-Composite_Backups_${SourceEnv}/${SHARE}/" >>${LOGS}
+        fi
+
+        #rsync -avS  --dry-run /BackupIn/ /BackupOut/${SHARE}/ >/dev/null
+        rsync -avS ${RsyncOption} /BackupIn/ /BackupOut/${SHARE}/ >/dev/null
+
+        umount -l /BackupIn
+        #if [ $? -ne 0 ];then
+                #echo "Bummer! unable to unmount Input volume - /${SHARE}."
+                #echo "End - unable to unmount Input volume - /${SHARE}." >>${LOGS}
+                #cleanup
+                #exit
+        #fi
+
+
+done
+
+umount -l /BackupOut
+if [ $? -ne 0 ];then
+        echo "Bummer! unable to unmount Output volume - /export/${TargetEnv}-Composite_Backups_${SourceEnv}."
+        echo "End - unable to unmount Output volume - /export/${TargetEnv}-Composite_Backups_${SourceEnv}." >>${LOGS}
+        cleanup
+        exit
+fi
+
+}
+
+cleanup()
+{
+rm -f backup_vols-${SourceEnv};rm -f foo-projects-${SourceEnv}; rm -f foo-vols-${SourceEnv}; rm -f backup_vols-working-list
+}
+
+umount -f /BackupOut >/dev/null 2>&1
+umount -f /BackupIn >/dev/null 2>&1
+
+SourceEnv=${1}
+
+if [ X$2 = 'XDryRun' ];then
+        RsyncOption="--dry-run"
+fi
+
+LOGS=/root/BackupLogs/backup.${SourceEnv}
+echo "Start" >${LOGS}
+
+echo "shares ls" > foo
+ssh root@192.168.8.1 <foo >foo-projects-${SourceEnv} 2>&1
+ssh root@192.168.8.2 <foo >>foo-projects-${SourceEnv} 2>&1
+
+
+grep ${SourceEnv} foo-projects-${SourceEnv}
+if [ $? -ne 0 ];then
+        grep "stage" foo-projects-${SourceEnv}
+        if [ $? -ne 0 ];then
+                echo "the environment you specified - ${SourceEnv} - can not be accesed from this server."
+                echo "End - the environment you specified - ${SourceEnv} - can not be accesed from this server." >>${LOGS}
+                cleanup
+                exit
+        fi
+fi
+
+case    ${SourceEnv} in
+        dev1)  SourceZFS=1;TargetZFS=2;TargetEnv="dev2";;
+        dev2)  SourceZFS=2;TargetZFS=1;TargetEnv="dev1";;
+        tst1)  SourceZFS=1;TargetZFS=2;TargetEnv="dev2";;
+        tst2)  SourceZFS=2;TargetZFS=1;TargetEnv="dev1";;
+         trn)  SourceZFS=2;TargetZFS=1;TargetEnv="dev1";;
+         sbx)  SourceZFS=1;TargetZFS=2;TargetEnv="dev2";;
+        stg1)  SourceZFS=1;TargetZFS=2;TargetEnv="stg";;
+        stg12) SourceZFS=2;TargetZFS=1;TargetEnv="stg";;
+        stg2)  SourceZFS=1;TargetZFS=2;TargetEnv="stg";;
+        stg22) SourceZFS=2;TargetZFS=1;TargetEnv="stg";;
+           *) echo "you must specify a valid environment!";cleanup;exit;;
+
+esac
+
+REMEMBER="nada"
+
+backup
+
+if [ "${TargetEnv}" = 'stg' ]; then
+        REMEMBER="pool2"
+        SourceZFS=2;TargetZFS=1
+        umount -f /BackupOut >/dev/null 2>&1
+        umount -f /BackupIn >/dev/null 2>&1
+        backup
+
+fi
+
+echo "End - success" >>${LOGS}
+
+cleanup
+#       -30-
+
