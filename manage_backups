@@ -1,3 +1,4 @@
+
 #!/bin/sh
 #
 #       rsync the file systems defined by the list "backup_vols-working-list" to a volume
@@ -25,18 +26,18 @@ grep ^stg foo-vols-${SourceEnv} >>backup_vols-${SourceEnv}
 cat backup_vols-${SourceEnv} | awk '{print $NF}' | grep -v "MOUNTPOINT" > "backup_vols-working-list"
 
 if [ "${REMEMBER}" = 'pool2' ];then
-        mount 192.168.8.${TargetZFS}:/export/${TargetEnv}-Composite_Backups_pool2 /BackupOut
+        mount 192.168.8.${TargetZFS}:/export/${TargetEnv}-Composite_Backups_pool2 /BackupsOut
         if [ $? -ne 0 ];then
                 echo "Bummer! unable to mount Output volume - /export/${TargetEnv}-Composite_Backups_pool2."
-                echo "End - unable to mount Output volume - /export/${TargetEnv}-Composite_Backups_pool2."  >>${LOGS}
+                RD; echo "End - ${DATE} - unable to mount Output volume - /export/${TargetEnv}-Composite_Backups_pool2."  >>${LOGS}
                 cleanup
                 exit
         fi
 else
-        mount 192.168.8.${TargetZFS}:/export/${TargetEnv}-Composite_Backups_${SourceEnv} /BackupOut
+        mount 192.168.8.${TargetZFS}:/export/${TargetEnv}-Composite_Backups_${SourceEnv} /BackupsOut
         if [ $? -ne 0 ];then
                 echo "Bummer! unable to mount Output volume - /export/${TargetEnv}-Composite_Backups_${SourceEnv}."
-                echo "End - unable to mount Output volume - /export/${TargetEnv}-Composite_Backups_${SourceEnv}." >>${LOGS}
+                RD; echo "End - ${DATE} - unable to mount Output volume - /export/${TargetEnv}-Composite_Backups_${SourceEnv}." >>${LOGS}
                 cleanup
                 exit
         fi
@@ -47,31 +48,31 @@ for SHARE in `cat backup_vols-working-list | sed 's/^\/\(.*\)/\1/'`
 do
 echo /${SHARE}
 
-        mount -o ro 192.168.8.${SourceZFS}:/${SHARE} /BackupIn
+        mount -o ro 192.168.8.${SourceZFS}:/${SHARE} /BackupsIn
         if [ $? -ne 0 ];then
                 echo "Bummer! unable to mount Input volume - 192.168.8.${SourceZFS}:/${SHARE}."
-                echo "End - unable to mount Input volume - 192.168.8.${SourceZFS}:/${SHARE}." >>${LOGS}
+                RD; echo "End - ${DATE} - unable to mount Input volume - 192.168.8.${SourceZFS}:/${SHARE}." >>${LOGS}
                 cleanup
                 exit
         fi
 
 
 
-        mkdir -p /BackupOUT/${SHARE}
+        mkdir -p /BackupsOut/${SHARE}
 
         if [ "${REMEMBER}" = 'pool2' ];then
-                echo "Syncing 192.168.8.${SourceZFS}:/${SHARE} to 192.168.8.${TargetZFS}:/export/${TargetEnv}-Composite_Backups_pool2/${SHARE}/" >>${LOGS}
+                RD; echo "Syncing - ${DATE} - 192.168.8.${SourceZFS}:/${SHARE} to 192.168.8.${TargetZFS}:/export/${TargetEnv}-Composite_Backups_pool2/${SHARE}/" >>${LOGS}
         else
-                echo "Syncing 192.168.8.${SourceZFS}:/${SHARE} to 192.168.8.${TargetZFS}:/export/${TargetEnv}-Composite_Backups_${SourceEnv}/${SHARE}/" >>${LOGS}
+                RD; echo "Syncing - ${DATE} - 192.168.8.${SourceZFS}:/${SHARE} to 192.168.8.${TargetZFS}:/export/${TargetEnv}-Composite_Backups_${SourceEnv}/${SHARE}/" >>${LOGS}
         fi
 
-        #rsync -avS  --dry-run /BackupIn/ /BackupOut/${SHARE}/ >/dev/null
-        rsync -avS ${RsyncOption} /BackupIn/ /BackupOut/${SHARE}/ >/dev/null
+        #rsync -avS  --dry-run --delete /BackupsIn/ /BackupsOut/${SHARE}/ >/dev/null
+        rsync -avS ${RsyncOption} --delete /BackupsIn/ /BackupsOut/${SHARE}/ >/dev/null
 
-        umount -l /BackupIn
+        umount -l /BackupsIn
         #if [ $? -ne 0 ];then
                 #echo "Bummer! unable to unmount Input volume - /${SHARE}."
-                #echo "End - unable to unmount Input volume - /${SHARE}." >>${LOGS}
+                RD; #echo "End - ${DATE} - unable to unmount Input volume - /${SHARE}." >>${LOGS}
                 #cleanup
                 #exit
         #fi
@@ -79,10 +80,10 @@ echo /${SHARE}
 
 done
 
-umount -l /BackupOut
+umount -l /BackupsOut
 if [ $? -ne 0 ];then
         echo "Bummer! unable to unmount Output volume - /export/${TargetEnv}-Composite_Backups_${SourceEnv}."
-        echo "End - unable to unmount Output volume - /export/${TargetEnv}-Composite_Backups_${SourceEnv}." >>${LOGS}
+        RD; echo "End - ${DATE} - unable to unmount Output volume - /export/${TargetEnv}-Composite_Backups_${SourceEnv}." >>${LOGS}
         cleanup
         exit
 fi
@@ -93,9 +94,15 @@ cleanup()
 {
 rm -f backup_vols-${SourceEnv};rm -f foo-projects-${SourceEnv}; rm -f foo-vols-${SourceEnv}; rm -f backup_vols-working-list
 }
+RD()
+{
+DATE=`date +%d%b%g-%T`
+}
+# backup starts here...
 
-umount -f /BackupOut >/dev/null 2>&1
-umount -f /BackupIn >/dev/null 2>&1
+
+umount -f /BackupsOut >/dev/null 2>&1
+umount -f /BackupsIn >/dev/null 2>&1
 
 SourceEnv=${1}
 
@@ -104,19 +111,19 @@ if [ X$2 = 'XDryRun' ];then
 fi
 
 LOGS=/root/BackupLogs/backup.${SourceEnv}
-echo "Start" >${LOGS}
+echo "Start - ${DATE} " >${LOGS}
 
 echo "shares ls" > foo
 ssh root@192.168.8.1 <foo >foo-projects-${SourceEnv} 2>&1
 ssh root@192.168.8.2 <foo >>foo-projects-${SourceEnv} 2>&1
 
 
-grep ${SourceEnv} foo-projects-${SourceEnv}
+grep ${SourceEnv} foo-projects-${SourceEnv} >/dev/null 2>&1
 if [ $? -ne 0 ];then
         grep "stage" foo-projects-${SourceEnv}
         if [ $? -ne 0 ];then
                 echo "the environment you specified - ${SourceEnv} - can not be accesed from this server."
-                echo "End - the environment you specified - ${SourceEnv} - can not be accesed from this server." >>${LOGS}
+                echo "End - ${DATE} - the environment you specified - ${SourceEnv} - can not be accesed from this server." >>${LOGS}
                 cleanup
                 exit
         fi
@@ -137,21 +144,20 @@ case    ${SourceEnv} in
 
 esac
 
-REMEMBER="nada"
+REMEMBER="nyet"
 
 backup
 
 if [ "${TargetEnv}" = 'stg' ]; then
         REMEMBER="pool2"
         SourceZFS=2;TargetZFS=1
-        umount -f /BackupOut >/dev/null 2>&1
-        umount -f /BackupIn >/dev/null 2>&1
+        umount -f /BackupsOut >/dev/null 2>&1
+        umount -f /BackupsIn >/dev/null 2>&1
         backup
 
 fi
 
-echo "End - success" >>${LOGS}
+echo "End - ${DATE} - success" >>${LOGS}
 
 cleanup
 #       -30-
-
