@@ -1,0 +1,228 @@
+621917000394 & 621917000395
+
+cluster date show	
+cluster peer ping	
+cluster statistics show	
+system timeout modify -timeout 0
+
+system node run -node netapp7-01 -command sysconfig -r
+system node show -fields uptime
+network port show -instance netapp7-01 -port a0a
+network port show -instance netapp7-02 -port a0a
+
+up - top
+
+network interface show
+
+network port show
+
+system service-processor show
+
+vserver services name-service dns modify -vserver netapp7 -domains mqs.corp -name-servers 172.16.2.10,172.16.2.1
+vserver services name-service dns show
+
+set adv
+	statistics show-periodic
+	cluster statistics show
+
+vserver cifs share show
+vserver cifs share create
+vserver cifs share modify
+vserver cifs share delete
+
+vserver services name-service netgroup load -vserver netapp07 -source http://172.16.2.172/intranet/compliance/netgroup
+vserver services netgroup file show -vserver netapp07
+vserver services name-service netgroup file show
+
+vserver export-policy netgroup check-membership -vserver netapp07 -netgroup  MSPservers -client-ip 172.16.2.172
+
+vserver nfs modify -vserver vserver_name -netgroup-dns-domain-search {enabled|disabled}
+
+set -priv diag; vserver services name-service getXXbyYY netgrp MSPservers -node netapp7-01 -vserver netapp07 -clientIP 172.16.2.220
+
+snapmirror policy create -vserver netapp07 -policy tdp_policy -window-size-for-tdp-mirror 5MB -type async-mirror
+snapmirror create -source-path 172.16.2.12:scratch02  -destination-path netapp07:scratch02 -type TDP -policy tdp_policy
+snapmirror initialize -destination-path netapp07:scratch02
+snapmirror show -destination-path netapp07:scratch02
+snapmirror modify -vserver netapp07 -destination-path netapp07:scratch02 -schedule dailyX8  <<<< for each volume
+snapmirror show -fields schedule
+
+snapmirror update -destination-path netapp07:scratch02 <<<< for each volume
+snapmirror break -destination-path xandata01 <<<<<<<<<  break
+snapmirror resync -source-path 172.16.2.12:cdotTest -destination-path netapp07:cdotTest
+
+snapmirror modify -destination-path <vserver:dest_volume> -schedule ""  <<<remove schedule
+
+vserver services name-service dns hosts create -vserver netapp07 -address <IPaddr> -hostname <Hostname> -aliases <aliases>  <<<< add entry to hosts table
+vserver services name-service dns hosts show  <<<< show hosts table
+vserver services name-service dns check -vserver netapp07
+
+set -priv adv ; vserver services name-service cache netgroups members delete-all -vserver netapp07
+
+set -priv diag ; vserver services name-service getXXbyYY gethostbyname mspcent09.mqs.corp -node netapp7-01 -vserver netapp07  <<<<<<<  nslookup
+
+ping -lif nas_lif1 -vserver netapp07 mspfiler03a
+
+vserver services name-service ns-switch show  <<<< nsswitch.conf
+
+vserver export-policy create -vserver netapp07 -policyname MQSnfs  <<<< create export-policy                                                                                                                                                                                              
+vserver export-policy rule create -vserver netapp07 -policyname MQSnfs -clientmatch @MSPservers -ruleindex 1 -protocol any -rorule sys -rwrule sys -superuser sys
+vserver export-policy rule create -vserver netapp07 -policyname MQSnfs  -clientmatch 172.16.2.171, 172.16.2.172,172.16.2.25 -ruleindex 2 -protocol nfs -rorule sys -rwrule sys -superuser sys    
+
+vserver export-policy rule create -vserver netapp07 -policyname MQSnfs -clientmatch @MSPservers -ruleindex 1 -protocol any -rorule sys -rwrule sys -superuser sys  <<< create export-policy rule
+vserver export-policy rule create -vserver netapp07 -policyname test -clientmatch 172.16.2.0/255.255.255.0  -ruleindex 1 -protocol any -rorule sys -rwrule sys -superuser sys  <<<<< test
+vserver export-policy rule delete -vserver netapp07 -policyname test -ruleindex 2 >>>> delete export policy by rule
+
+vserver export-policy rule show
+vserver export-policy rule show -vserver netapp07 -policyname MQSnfs
+vserver export-policy rule show -vserver netapp07 -policyname MQSnfs -fields ruleindex,protocol,clientmatch,rorule,rwrule,anon,superuser
+volume show -vserver netapp07 -volume {volname} -fields policy <<<< show export policy assigned to volume
+
+vserver export-policy rule create -vserver netapp07 -policyname test -clientmatch 172.16.2.0/255.255.255.0, 172.16.1.0/255.255.255.0  -ruleindex 1 -protocol any -rorule sys -rwrule sys -superuser sys
+
+vserver export-policy delete -vserver netapp07 -policyname transition_export_policy_4
+------------------------------------------------------------------------------------------------------------------------------------------
+vol create -vserver netapp07 -volume cdotTest -aggregate aggr1_netapp7_02 -type dp  <<< create volume
+volume modify -vserver netapp07 -volume cdotTest -policy MQSnfs <<<  add/modify export-policy---assign policy to volume
+volume mount -vserver netapp07 -volume cdotTest -junction-path /cdotTest  <<< mount to junction-path
+------------------------------------------------------------------------------------------------------------------------------------------
+volume show -vserver netapp07 -volume nfs01 -fields junction-path  <<<<< show junction path
+
+volume unmount -vserver netapp07 -volume cdotTest   <<< unmount from junction-path
+
+job schedule cron create -name dailyX8 -dayofweek all -hour 4,10,18 -minute 39  <<<<< create snapmirror schedule
+job schedule cron modify -name dailyX8 -dayofweek all -hour 2,10,18 -minute 39  <<<<< modify snapmirror schedule
+
+job schedule show -name dailyX8
+job schedule show-jobs	
+
+ options -option-name replication.throttle.outgoing.max_kbs <kbps>
+
+options -option-name replication.throttle.outgoing.max_kbs unlimited  
+
+options -option-name replication.throttle.incoming.max_kbs unlimited
+
+options -option-name replication.throttle.enable on|off
+
+125000kbps = 1gb
+
+vol show -snapshot-policy none
+vol show -snapshot-policy default
+
+vol modify nfs01 -sched-snap-name ordinal
+vol modify -volume  cdotTest -sched-snap-name  ordinal
+vol show -volume  cdotTest -fields sched-snap-name
+vol show nfs01 -fields sched-snap-name
+
+job schedule cron create -name 10-4-10 -month all -dayofweek all -day all -hour 1,4,5,8,10,12,14,16,18,20 -minute 05
+job schedule cron create -name 10-4-7 -month all -dayofweek all -day all -hour 8,10,12,14,16,18,20 -minute 05
+job schedule cron create -name 10-4-6 -month all -dayofweek all -day all -hour 8,10,12,14,16,20 -minute 05
+job schedule cron create -name 0-2-4 -month all -dayofweek all -day all -hour 8,12,16,20 -minute 05
+volume snapshot policy delete -vserver netapp07 -policy 1-2-6
+
+volume modify -vserver netapp07 -volume tiback -percent-snapshot-space 0 <<< modify snap reserve
+
+volume snapshot policy create -vserver netapp07 -policy 10-4-10  -schedule1 weekly -count1 10 -schedule2 daily -count2 4 -schedule3 10-4-10 -count3 10 -enabled true
+volume snapshot policy create -vserver netapp07 -policy 10-4-7  -schedule1 weekly -count1 10 -schedule2 daily -count2 4 -schedule3 10-4-7-count3 7 -enabled true
+volume snapshot policy create -vserver netapp07 -policy 10-4-6  -schedule1 weekly -count1 10 -schedule2 daily -count2 4 -schedule3 10-4-6 -count3 6 -enabled true
+volume snapshot policy create -vserver netapp07 -policy  0-2-4  -schedule1 weekly -count1 0 -schedule2 daily -count2 2 -schedule3 0-2-4 -count3 4 -enabled true
+volume snapshot show -volume nfs01   <<<<<< show all snapshot polices
+volume modify -vserver netapp07 -volume nfs01 -snapshot-policy 10_4_10  <<<<< associate a snapshot policy with a volume - also disassociates existing policy
+volume show -vserver netapp07 -volume * -snapshot-policy 10_4_10  <<<<<<<< show what volumes are associated with a given snapshot policy
+
+vol snapshot policy show 10-4-10 -instance
+volume snapshot rename -vserver netapp07_root -volume  netapp07-snapshot hourly.2019-07-01_1405 -new-name hourly.7
+
+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+volume snapshot policy remove-schedule -vserver netapp07 -policy 10-4-10 -schedule hourly
+volume snapshot policy add-schedule -vserver netapp07 -policy 10-4-10 -schedule 10-4-10 -count 10
+vol snapshot policy show 10-4-10 -instance
+snap list nfs01 -fields create-time
+job schedule cron delete -name 1-2-6
+
+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+job schedule cron show  <<<<< show job schedule
+
+volume snapshot policy delete -vserver netapp07 -policy transition_snapshot_policy_0  <<<< delete snapshot policy
+
+snap list nfs01 -instance
+snap delete cifs02 transition_snapshot_schedule_2.2019-06-28_0800 -vserver netapp07  <<<<<<<<<<< delete snapshot
+volume show -vserver netapp07 -volume *  <<<<< show snapshot polices associated with a given volume
+snap delete xandata02 daily.2019-07-03_0010 -vserver netapp07  <<<< delete snapshot
+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+security login create -user-or-group-name pbell -application ssh  -authmethod publickey  -role admin -vserver netapp7
+security login modify -user-or-group-name pbell -application ssh -authentication-method publickey -second-authentication-method password -vserver netapp07 <<<<this one
+
+security login publickey create -vserver netapp07 -username pbell -index 0 -publickey "ssh-rsa AAAAB3NzaC1yc2EAAAABIwAAAQEAywmtK0au9nC5MNS69lxcF/NcSEzwwmqbLH1vODgFtIlvIiuabU0xU47GC9IZdr/seyLds4+ymWgJWBDhVj9zuoXF89NDhJhbRgBqcub7oy/NPi53RIVaSIXyoNeCXJU5cqv+8/Bi5g4zSqHIDEpm0oq2JLSiP2DQEQqI6JHRZhWFy9ejNOWMNmQZmaS/6UOUJIy0Ljj/h86oj+LB503XNZhr0bCSzhujuMrzNA0/Tupr0JsZTLjk/hNyXAOxJUjxN+goQG+v9ET+pe5EhVtjLgsLzp8i/Vnno6KpdljV1j+1rOOsiE8kMQgxNbUT8rDTgBoR+Dr9QllyvOSe6cK6jQ== -comment "pbell@mspcent02.mqs.corp"
+
+security login publickey create -vserver netapp07 -username pbell -index 0 -publickey "ssh-rsa AAAAB3NzaC1yc2EAAAABIwAAAQEAywmtK0au9nC5MNS69lxcF/NcSEzwwmqbLH1vODgFtIlvIiuabU0xU47GC9IZdr/seyLds4+ymWgJWBDhVj9zuoXF89NDhJhbRgBqcub7oy/NPi53RIVaSIXyoNeCXJU5cqv+8/Bi5g4zSqHIDEpm0oq2JLSiP2DQEQqI6JHRZhWFy9ejNOWMNmQZmaS/6UOUJIy0Ljj/h86oj+LB503XNZhr0bCSzhujuMrzNA0/Tupr0JsZTLjk/hNyXAOxJUjxN+goQG+v9ET+pe5EhVtjLgsLzp8i/Vnno6KpdljV1j+1rOOsiE8kMQgxNbUT8rDTgBoR+Dr9QllyvOSe6cK6jQ==" -comment "pbell@mspcent02.mqs.corp" <<< this one
+
+security login publickey load -user pbell -uri http://172.16.2.172/intranet/compliance/netgroup
+
+security login show
+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+system timeout modify –timeout 0
+
+-----------------------------------------------------------------------------------------------------------------------------------
+volume modify -vserver netapp07 -volume {volname} -snapshot-policy {snapshot_policy_name}
+-----------------------------------------------------------------------------------------------------------------------------------
+<<<<< modify volume size >>>>>>>>>>>>>>
+vol modify -volume ericdata01 -filesys-size-fixed false -vserver netapp07
+vol size -vserver netapp07 -volume ericdata01 3TB
+volume modify -volume cdotTest -size +5g
+
+------------------------------------------------------------------------------------------------------------------------------------------
+vserver cifs security modify -vserver netapp07  -is-password-complexity-required false
+vserver cifs users-and-groups local-user modify -vserver netapp07 -user-name emurphy -is-account-disabled false  <<<< add/modify member to local user/group
+vserver cifs share access-control delete -vserver netapp07 -share emurphy -user-or-group everyone  <<<< delete share access control
+vserver cifs share access-control create -vserver netapp07 -share bob -user-group-type unix-user -user-or-group  bob  -permission Full_Control   <<<< create share
+
+if you want to...	                 Use this command...
+Create a local UNIX user	vserver services unix-user create
+Display local UNIX users	vserver services unix-user show
+Modify a local UNIX user	vserver services unix-user modify
+Delete a local UNIX user	vserver services unix-user delete
+
+cifs users-and-groups local-user show -vserver netapp07  <<< show all local user accounts
+cifs users-and-groups local-user show -instance -vserver netapp07 -user-name pbell <<< show local user account
+cifs users-and-groups local-user modify -vserver netapp07 -user-name pbell -is-account-disabled true  <<<< disable local user account
+set -priv diag; diag secd authentication show-creds -node netapp7-01 -vserver netapp07 -unix-user-name pbell -list-id true  <<<< show creds
+vserver services unix-user create -vserver netapp07 -user pbell -id 528 -primary-gid 100 -full-name "Paul Bell"  <<<< create a local unix user
+
+security login domain-tunnel create -vserver netapp07
+security login domain-tunnel show
+
+vserver services name-service unix-group adduser -name prod -username pbell  <<<< add user to (local) group
+vserver services name-service unix-group show
+vserver services name-service unix-group show  -name prod -members
+vserver cifs share access-control create -vserver netapp07 -share emurphy -user-group-type windows -user-or-group  dplata  -permission Full  <<< add user to share access
+vserver services name-service unix-group create prod -id 503  <<< create a local group
+vserver services name-service unix-group show
+
+set -priv diag; diag secd authentication translate -node local -vserver netapp07 -win-name dplata <<<< cifs lookup
+cifs share create -share-name trpcmap -path /nfs01/home/triedel/trpcmap  <<< create a cifs share
+cifs share delete -vserver netapp07 -share-name pbell   <<< delete a cifs share
+
+------------------------------------------------------------------------- add, delete, and modify cifs shares -------------------------------------------------------------------------------
+vserver cifs share access-control delete -vserver netapp07 -share pbell -user-or-group everyone  <<<< delete share access control
+vserver cifs share access-control create -vserver netapp07 -share pbell -user-group-type windows -user-or-group  pbell  -permission Full_Control
+vserver cifs share access-control delete -vserver netapp07 -share pbell -user-or-group pbell -user-group-type unix-user
+cifs share access-control show -vserver netapp07 -share pbell -user-or-group *  -inst
+
+vserver cifs users-and-groups local-user delete -vserver netapp07 -user-name pbell  <<<< delete local user
+vserver cifs users-and-groups local-user show -vserver netapp07
+
+vserver security file-directory show -vserver netapp07 -path /nfs01/home/pbell/
+vserver security file-directory show -vserver netapp07 -path /nfs01/home/pbell -expand-mask true
+vserver sectrace filter create -vserver netapp07 -index 1 -trace-allow no -windows-name pbell
+
+
+
+------------------------------------------------------------------------------------------------------------------------------------------------------
+
+---------------------------------------------------------------   create unix users and adjust share permissions -----------------------------------------------------------------------------------
+vserver services unix-user create -vserver netapp07 -user dbabcock -id 503 -primary-gid 502 -full-name "David Babcock"
+vserver cifs share access-control create -vserver netapp07 -share dbabcock -user-group-type unix-user -user-or-group dbabcock  -permission Full_Control
+vserver cifs share access-control delete -vserver netapp07 -share dbabcock -user-or-group everyone
+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
